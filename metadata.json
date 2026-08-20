@@ -1,0 +1,5 @@
+{
+  "name": "Syncopated Context Compiler",
+  "description": "Import, rate, and explore LLM conversations in 3D graph space, and distill multi-turn context into gitagent-compatible SKILL.md artifacts.",
+  "requestFramePermissions": []
+}
