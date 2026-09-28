@@ -136,9 +136,14 @@ export class ProxyAdapter implements ModelProvider {
     }
   }
 
-  async fetchModels(_apiKey: string | undefined): Promise<ModelInfo[]> {
+  async fetchModels(apiKey: string | undefined): Promise<ModelInfo[]> {
     try {
-      const response = await fetch(`/api/llm/models/${this.id}`);
+      const headers: Record<string, string> = {};
+      if (apiKey) {
+        headers['Authorization'] = `Bearer ${apiKey}`;
+      }
+
+      const response = await fetch(`/api/llm/models/${this.id}`, { headers });
       const contentType = response.headers.get('content-type') || '';
       const text = await response.text();
       

@@ -139,7 +139,11 @@ async function startServer() {
         return res.status(404).json({ error: "Provider not found" });
       }
 
-      const apiKey = getApiKey(providerId);
+      // Check header, query, or server environment key
+      const authHeader = req.headers.authorization;
+      const clientKey = (authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : undefined) || (req.query.apiKey as string | undefined);
+      const apiKey = clientKey || getApiKey(providerId);
+
       const models = await provider.fetchModels(apiKey);
       if (!models || !Array.isArray(models)) {
         throw new Error(`Provider ${providerId} returned invalid models format`);

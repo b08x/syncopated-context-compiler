@@ -154,6 +154,13 @@ export function ProviderProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     checkServerStatus();
+    // Load models for enabled providers that have server keys or stored keys
+    providers.forEach(p => {
+      const isEnabled = Boolean(state.enabledProviders[p.id]);
+      if (isEnabled) {
+        refreshModels(p.id);
+      }
+    });
   }, [state.enabledProviders]);
 
   const setProviderEnabled = (providerId: string, enabled: boolean) => {
@@ -202,12 +209,12 @@ export function ProviderProvider({ children }: { children: ReactNode }) {
     }));
   };
 
-  const refreshModels = async (providerId: string) => {
+  const refreshModels = async (providerId: string, overrideKey?: string) => {
     const provider = providers.find(p => p.id === providerId);
     if (!provider) return;
 
     try {
-      const key = state.apiKeys[providerId];
+      const key = overrideKey !== undefined ? overrideKey : state.apiKeys[providerId];
       const models = await provider.fetchModels(key);
       const uniqueModels = Array.from(new Map(models.map(m => [m.id, m])).values());
       
@@ -255,8 +262,9 @@ export function ProviderProvider({ children }: { children: ReactNode }) {
         }
       }));
 
+      // When API key is validated, fetch the full models list immediately with that key
       if (result.success) {
-        refreshModels(providerId);
+        await refreshModels(providerId, key);
       }
 
       return result;

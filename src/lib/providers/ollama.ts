@@ -105,23 +105,62 @@ export class OllamaAdapter implements ModelProvider {
         return [];
       }
       const data = await response.json();
-      return data.models.map((m: any) => ({
-        id: m.name || '',
-        name: m.name || 'Unknown Model',
-        capabilities: {
-          tools: false,
-          reasoning: m.name?.includes('llama3') || m.name?.includes('mistral') || false,
-          structured: true,
+      return data.models.map((m: any) => {
+        const nameLower = (m.name || '').toLowerCase();
+        let contextLength = 8192;
+        if (nameLower.includes('llama3.1') || nameLower.includes('llama3.2') || nameLower.includes('llama3.3')) {
+          contextLength = 131072;
+        } else if (nameLower.includes('mistral') || nameLower.includes('qwen')) {
+          contextLength = 32768;
         }
-      }));
+
+        const features: string[] = ['Local / Private', 'Zero Cost'];
+        if (nameLower.includes('llama3') || nameLower.includes('qwen') || nameLower.includes('deepseek')) {
+          features.push('Deep Reasoning');
+        }
+        if (nameLower.includes('vision') || nameLower.includes('llava')) {
+          features.push('Vision');
+        }
+
+        return {
+          id: m.name || '',
+          name: m.name || 'Unknown Model',
+          description: `Locally hosted Ollama model (${m.details?.parameter_size || 'local weights'}, ${m.details?.quantization_level || 'quantized'}).`,
+          contextLength,
+          pricing: { prompt: 0, completion: 0 },
+          supportedParameters: ['temperature', 'top_p', 'top_k', 'repeat_penalty', 'seed', 'format'],
+          features,
+          capabilities: {
+            tools: false,
+            reasoning: nameLower.includes('llama3') || nameLower.includes('mistral') || nameLower.includes('deepseek'),
+            structured: true,
+            vision: nameLower.includes('llava') || nameLower.includes('vision'),
+          }
+        };
+      });
     } catch (e) {
       const isNetworkError = e instanceof TypeError && e.message === 'Failed to fetch';
       if (isNetworkError) {
         console.warn('Ollama connection failed (Network Error). This usually means Ollama is not running or OLLAMA_ORIGINS="*" is not set for CORS support.');
-        // Return a few common fallbacks so the user can at least see the option
         return [
-          { id: 'llama3', name: 'Llama 3 (Fallback)', capabilities: { tools: false, reasoning: true, structured: true } },
-          { id: 'mistral', name: 'Mistral (Fallback)', capabilities: { tools: false, reasoning: true, structured: true } },
+          { 
+            id: 'llama3', 
+            name: 'Llama 3 (Fallback)', 
+            contextLength: 8192,
+            pricing: { prompt: 0, completion: 0 },
+            supportedParameters: ['temperature', 'top_p', 'seed'],
+            features: ['Local / Private', 'Zero Cost', 'Deep Reasoning'],
+            capabilities: { tools: false, reasoning: true, structured: true } 
+          },
+          { 
+            id: 'mistral', 
+            name: 'Mistral (Fallback)', 
+            contextLength: 32768,
+            pricing: { prompt: 0, completion: 0 },
+            supportedParameters: ['temperature', 'top_p', 'seed'],
+            features: ['Local / Private', 'Zero Cost'],
+            capabilities: { tools: false, reasoning: true, structured: true } 
+          },
         ];
       } else {
         console.error('Ollama connection failed:', e);

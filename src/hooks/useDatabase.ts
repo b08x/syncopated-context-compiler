@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { db, AppDatabase, SessionRecord } from '../lib/db';
+import { db, AppDatabase, SessionRecord, saveFullGraph } from '../lib/db';
+import { ConvoGraph } from '../types/graph';
 
 export interface UseDatabaseOptions<T> {
   key?: string;
@@ -33,6 +34,9 @@ export interface UseDatabaseReturn<T> {
   clearAllSessions: () => Promise<void>;
   listKeys: (category?: string) => Promise<string[]>;
   getAllSessions: (category?: string) => Promise<SessionRecord[]>;
+
+  // Graph persistence directly to Dexie tables
+  saveGraph: (graph: ConvoGraph) => Promise<void>;
 }
 
 /**
@@ -230,6 +234,18 @@ export function useDatabase<T = any>(options?: UseDatabaseOptions<T>): UseDataba
     setUpdatedAt(null);
   }, [targetKey, removeItem, initialValue]);
 
+  // Persist full ConvoGraph directly to Dexie database tables
+  const saveGraph = useCallback(async (graph: ConvoGraph): Promise<void> => {
+    try {
+      setError(null);
+      await saveFullGraph(graph);
+    } catch (err: any) {
+      const formatted = err instanceof Error ? err : new Error(String(err));
+      setError(formatted);
+      throw formatted;
+    }
+  }, []);
+
   return {
     db,
     data: localData,
@@ -247,6 +263,7 @@ export function useDatabase<T = any>(options?: UseDatabaseOptions<T>): UseDataba
     clearAllSessions,
     listKeys,
     getAllSessions,
+    saveGraph,
   };
 }
 

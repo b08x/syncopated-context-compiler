@@ -1,7 +1,7 @@
 export interface MessageNode {
   id: string;
-  source: 'claude' | 'chatgpt' | 'mistral';
-  role: 'user' | 'assistant';
+  source: 'claude' | 'chatgpt' | 'mistral' | 'markdown';
+  role: 'user' | 'assistant' | 'system';
   content: string;
   timestamp: number | null;
   conversation_id: string;
@@ -25,7 +25,7 @@ export interface ConversationRating {
 
 export interface ConversationNode {
   id: string;
-  source: 'claude' | 'chatgpt' | 'mistral';
+  source: 'claude' | 'chatgpt' | 'mistral' | 'markdown';
   title: string | null;
   project_id: string | null;
   messages: string[]; // MessageNode ids, ordered

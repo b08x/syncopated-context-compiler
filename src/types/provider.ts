@@ -9,14 +9,33 @@ export interface GenerationResult {
   object?: any;
 }
 
+export interface ModelPricing {
+  prompt: number; // USD per token or per million tokens
+  completion: number;
+  image?: number;
+  request?: number;
+}
+
 export interface ModelInfo {
   id: string;
   name: string;
   description?: string;
+  contextLength?: number;
+  maxOutputTokens?: number;
+  pricing?: ModelPricing;
+  supportedParameters?: string[]; // e.g. ["temperature", "top_p", "top_k", "tools", "response_format", "seed"]
+  architecture?: {
+    modality?: string;
+    tokenizer?: string;
+    instructType?: string;
+  };
+  features?: string[]; // e.g. ["Function Calling", "JSON Mode", "Vision", "Reasoning", "System Prompt"]
   capabilities: {
     tools: boolean;
     reasoning: boolean;
     structured: boolean;
+    vision?: boolean;
+    audio?: boolean;
   };
 }
 

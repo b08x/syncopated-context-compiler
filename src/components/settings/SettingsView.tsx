@@ -25,6 +25,7 @@ import {
   Database
 } from 'lucide-react';
 import { StorageSettings } from './StorageSettings';
+import { ModelCatalogList } from './ModelCatalogList';
 import { TaskType } from '@/src/types/provider';
 import { cn } from '@/src/lib/utils';
 
@@ -349,44 +350,18 @@ export function SettingsView() {
 
                       {/* Expandable Model List */}
                       {isExpanded && (
-                        <div className="mt-3 space-y-2 max-h-60 overflow-y-auto pr-1">
+                        <div className="mt-3">
                           {models.length === 0 ? (
                             <div className="p-4 text-center rounded-sm bg-muted/20 border border-border/30 text-xs font-mono text-muted-foreground">
-                              No models discovered. Click <span className="text-brand-orange">Test Connection</span> or enter an API key to sync models.
+                              No models discovered. Click <span className="text-brand-orange">Test Connection</span> or enter an API key to sync full model catalog.
                             </div>
                           ) : (
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                              {models.map(m => {
-                                const modelActive = isModelEnabled(p.id, m.id);
-                                return (
-                                  <div
-                                    key={m.id}
-                                    className={cn(
-                                      "flex items-center justify-between p-2 rounded-xs border text-xs font-mono transition-colors",
-                                      modelActive 
-                                        ? "bg-background/80 border-border/60" 
-                                        : "bg-muted/30 border-border/30 opacity-60"
-                                    )}
-                                  >
-                                    <div className="flex flex-col min-w-0 pr-2">
-                                      <span className="font-medium text-foreground truncate text-[11px]">
-                                        {m.name}
-                                      </span>
-                                      <span className="text-[9px] text-muted-foreground truncate">
-                                        {m.id}
-                                      </span>
-                                    </div>
-
-                                    <Switch
-                                      checked={modelActive}
-                                      onCheckedChange={(checked) => setModelEnabled(p.id, m.id, checked)}
-                                      size="sm"
-                                      aria-label={`Toggle model ${m.name}`}
-                                    />
-                                  </div>
-                                );
-                              })}
-                            </div>
+                            <ModelCatalogList
+                              providerId={p.id}
+                              models={models}
+                              isModelEnabled={isModelEnabled}
+                              setModelEnabled={setModelEnabled}
+                            />
                           )}
                         </div>
                       )}
@@ -478,6 +453,11 @@ export function SettingsView() {
                                   <SelectItem key={m.id} value={m.id}>
                                     <span className="flex items-center gap-2">
                                       <span>{m.name}</span>
+                                      {m.contextLength && (
+                                        <span className="text-[9px] font-mono text-blue-500 bg-blue-500/10 px-1 py-0.2 rounded-xs">
+                                          {m.contextLength >= 1000000 ? `${(m.contextLength/1000000).toFixed(0)}M` : `${Math.round(m.contextLength/1000)}k`} ctx
+                                        </span>
+                                      )}
                                       {!modelActive && (
                                         <span className="text-[9px] text-muted-foreground bg-muted px-1 py-0.2 rounded-xs">
                                           (Disabled in Provider)
