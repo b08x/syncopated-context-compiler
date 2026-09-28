@@ -17,8 +17,10 @@ import {
   Tag, 
   FileCode,
   ShieldCheck,
-  AlertTriangle
+  AlertTriangle,
+  BookmarkCheck
 } from 'lucide-react';
+import { useDatabase } from '@/src/hooks/useDatabase';
 import { cn } from '@/src/lib/utils';
 
 export function StorageSettings() {
@@ -92,6 +94,7 @@ export function StorageSettings() {
     { name: 'Distilled Skills', count: storageStats?.skills ?? 0, icon: Zap, color: 'text-amber-400' },
     { name: 'Artifacts', count: storageStats?.artifacts ?? 0, icon: FileCode, color: 'text-indigo-400' },
     { name: 'Project Docs', count: storageStats?.projectDocs ?? 0, icon: FileText, color: 'text-cyan-400' },
+    { name: 'Session Records', count: storageStats?.sessions ?? 0, icon: BookmarkCheck, color: 'text-pink-400' },
   ];
 
   return (
@@ -222,6 +225,37 @@ export function StorageSettings() {
                 </div>
               </div>
             ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Session Data Store (useDatabase Hook) */}
+      <Card className="border-border/60 bg-card/60 backdrop-blur-xs">
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="text-base font-semibold text-foreground flex items-center gap-2">
+                <BookmarkCheck className="w-4 h-4 text-pink-400" />
+                Session Store (<code className="font-mono text-xs text-brand-orange">useDatabase</code> Hook)
+              </CardTitle>
+              <CardDescription className="text-xs">
+                Component state and session caches persisted to Dexie via the <code className="font-mono text-xs">useDatabase</code> React hook.
+              </CardDescription>
+            </div>
+            <span className="text-[11px] font-mono text-muted-foreground">
+              {storageStats?.sessions ?? 0} active records
+            </span>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="text-xs text-muted-foreground">
+            The <code className="font-mono text-brand-orange bg-muted/40 px-1 py-0.5 rounded">useDatabase&lt;T&gt;()</code> hook provides reactive, multi-tab IndexedDB storage with simple <code className="font-mono">getItem</code>, <code className="font-mono">setItem</code>, <code className="font-mono">save</code>, and <code className="font-mono">removeItem</code> operations, replacing volatile memory or restrictive local/sessionStorage.
+          </div>
+          <div className="p-3 rounded bg-muted/30 border border-border/40 font-mono text-xs space-y-1.5">
+            <div className="text-muted-foreground">// Quick example usage in any component:</div>
+            <div className="text-foreground">
+              <span className="text-brand-orange">const</span> &#123; data, save, remove &#125; = <span className="text-brand-blue">useDatabase</span>&lt;FilterState&gt;(&#123; key: <span className="text-emerald-400">'review_filters'</span> &#125;);
+            </div>
           </div>
         </CardContent>
       </Card>

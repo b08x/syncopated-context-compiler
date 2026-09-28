@@ -1,8 +1,14 @@
 import React, { useState } from 'react';
 import { useGraph } from '@/src/contexts/GraphContext';
+import { useDatabase } from '@/src/hooks/useDatabase';
 import { RatingFilter } from '@/src/types/rating';
 import { cn } from '@/src/lib/utils';
 import { Search, Filter } from 'lucide-react';
+
+interface ReviewSessionState {
+  filter: RatingFilter;
+  search: string;
+}
 
 interface ConversationListProps {
   selectedId: string | null;
@@ -11,9 +17,25 @@ interface ConversationListProps {
 
 export function ConversationList({ selectedId, onSelect }: ConversationListProps) {
   const { state } = useGraph();
-  const [filter, setFilter] = useState<RatingFilter>('all');
-  const [search, setSearch] = useState('');
+  
+  // Persist session filter and search in Dexie via useDatabase hook
+  const { data: sessionState, save: saveSessionState } = useDatabase<ReviewSessionState>({
+    key: 'review_list_session',
+    category: 'ui_session',
+    initialValue: { filter: 'all', search: '' }
+  });
+
+  const filter = sessionState?.filter ?? 'all';
+  const search = sessionState?.search ?? '';
   const [dateRange, setDateRange] = useState<{ start: string; end: string }>({ start: '', end: '' });
+
+  const handleFilterChange = (newFilter: RatingFilter) => {
+    saveSessionState({ filter: newFilter, search });
+  };
+
+  const handleSearchChange = (newSearch: string) => {
+    saveSessionState({ filter, search: newSearch });
+  };
 
   const conversations = (Object.values(state.conversations) as any[]).filter((c) => {
     const matchesSearch = c.title?.toLowerCase().includes(search.toLowerCase()) || c.id.includes(search);
@@ -48,7 +70,7 @@ export function ConversationList({ selectedId, onSelect }: ConversationListProps
             placeholder="Search conversations..."
             className="w-full pl-9 pr-4 h-9 text-xs bg-background border border-border rounded-sm focus:outline-none focus:ring-1 focus:ring-brand-orange/50 text-foreground placeholder:text-muted-foreground/50 transition-all font-mono"
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => handleSearchChange(e.target.value)}
           />
         </div>
         
@@ -56,7 +78,7 @@ export function ConversationList({ selectedId, onSelect }: ConversationListProps
           {(['all', 'unrated', 'rated', 'issues'] as const).map((f) => (
             <button
               key={f}
-              onClick={() => setFilter(f)}
+              onClick={() => handleFilterChange(f)}
               className={cn(
                 "px-3 py-1 text-[10px] font-bold uppercase tracking-widest rounded-sm transition-all border",
                 filter === f 

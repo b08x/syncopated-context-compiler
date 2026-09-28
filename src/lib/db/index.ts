@@ -26,6 +26,14 @@ export interface SettingRecord {
   updatedAt: number;
 }
 
+export interface SessionRecord<T = any> {
+  key: string;
+  data: T;
+  category?: string;
+  updatedAt: number;
+  createdAt: number;
+}
+
 export interface StorageStats {
   conversations: number;
   messages: number;
@@ -35,6 +43,7 @@ export interface StorageStats {
   artifacts: number;
   projectDocs: number;
   memories: number;
+  sessions: number;
   storageEstimateBytes?: number;
   quotaBytes?: number;
   lastSavedAt?: number;
@@ -51,6 +60,7 @@ export class AppDatabase extends Dexie {
   project_docs!: Table<ProjectDocNode, string>;
   metadata!: Table<MetaRecord, string>;
   settings!: Table<SettingRecord, string>;
+  sessions!: Table<SessionRecord, string>;
 
   constructor() {
     super('SyncopatedContextCompilerDB');
@@ -65,6 +75,10 @@ export class AppDatabase extends Dexie {
       project_docs: 'id, project_id, filename',
       metadata: 'key, updatedAt',
       settings: 'key, updatedAt'
+    });
+
+    this.version(2).stores({
+      sessions: 'key, category, updatedAt, createdAt'
     });
   }
 }
@@ -288,7 +302,8 @@ export async function clearAllDatabase(): Promise<void> {
     db.artifacts.clear(),
     db.project_docs.clear(),
     db.metadata.clear(),
-    db.settings.clear()
+    db.settings.clear(),
+    db.sessions.clear()
   ]);
 }
 
@@ -305,6 +320,7 @@ export async function getStorageStats(): Promise<StorageStats> {
     artifacts,
     projectDocs,
     memories,
+    sessions,
     metaRecord
   ] = await Promise.all([
     db.conversations.count(),
@@ -315,6 +331,7 @@ export async function getStorageStats(): Promise<StorageStats> {
     db.artifacts.count(),
     db.project_docs.count(),
     db.memories.count(),
+    db.sessions.count(),
     db.metadata.get('graph_meta')
   ]);
 
@@ -340,6 +357,7 @@ export async function getStorageStats(): Promise<StorageStats> {
     artifacts,
     projectDocs,
     memories,
+    sessions,
     storageEstimateBytes,
     quotaBytes,
     lastSavedAt: metaRecord?.updatedAt
