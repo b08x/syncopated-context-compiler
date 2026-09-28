@@ -6,7 +6,15 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 cd "$SCRIPT_DIR"
+
+# Source project root .env if present
+if [[ -f "$PROJECT_ROOT/.env" ]]; then
+  set -a
+  source "$PROJECT_ROOT/.env"
+  set +a
+fi
 
 # Determine Compose Command
 if command -v podman &>/dev/null && podman compose version &>/dev/null 2>&1; then
@@ -56,7 +64,7 @@ while [[ $# -gt 0 ]]; do
       ;;
     -h|--help)
       cat <<EOF
-Usage: ./start.sh [OPTIONS]
+Usage: ./docker/start.sh [OPTIONS]
 
 Options:
   --build              Rebuild container images before starting
@@ -112,5 +120,5 @@ $COMPOSE_CMD --profile "$PROFILE" ps
 echo ""
 echo "Application URL: http://localhost:${APP_PORT:-3000}"
 echo "API Health:      http://localhost:${APP_PORT:-3000}/api/health"
-echo "To view logs:    ./start.sh --logs"
-echo "To stop:         ./start.sh --down"
+echo "To view logs:    ./docker/start.sh --logs"
+echo "To stop:         ./docker/start.sh --down"

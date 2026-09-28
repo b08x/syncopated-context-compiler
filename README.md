@@ -40,54 +40,54 @@ Use the included launcher script to automatically detect your host's GPU capabil
 
 ```bash
 # Auto-detects NVIDIA -> Intel -> CPU and starts in background
-./start.sh
+./docker/start.sh
 
 # Or rebuild image before launching
-./start.sh --build
+./docker/start.sh --build
 ```
 
 ### 3. Check Status and Logs
 
 ```bash
 # View service status
-./start.sh --status
+./docker/start.sh --status
 
 # Follow container logs
-./start.sh --logs
+./docker/start.sh --logs
 ```
 
 ### 4. Stop Services
 
 ```bash
-./start.sh --down
+./docker/start.sh --down
 ```
 
 ---
 
 ## Direct Compose Commands
 
-You can run `podman compose` directly using specific hardware profiles:
+You can run `podman compose` directly using specific hardware profiles against `docker/compose.yaml`:
 
 ### CPU Profile (Universal Fallback)
 ```bash
-podman compose --profile cpu up -d
+podman compose -f docker/compose.yaml --profile cpu up -d
 ```
 
 ### NVIDIA Profile (CUDA Acceleration)
 ```bash
-podman compose --profile nvidia up -d
+podman compose -f docker/compose.yaml --profile nvidia up -d
 ```
 
 ### Intel Profile (OpenVINO / iGPU)
 ```bash
-podman compose --profile intel up -d
+podman compose -f docker/compose.yaml --profile intel up -d
 ```
 
 ### Build or Rebuild
 ```bash
-podman compose --profile cpu build
+podman compose -f docker/compose.yaml --profile cpu build
 # or using podman build directly:
-podman build -t syncopated-context-compiler:latest -f Containerfile .
+podman build -t syncopated-context-compiler:latest -f docker/Containerfile .
 ```
 
 ---
@@ -115,16 +115,17 @@ Once running, access the services:
 ## Project Structure
 
 ```
-├── Containerfile              # Multi-stage production OCI build definition
-├── Dockerfile                 # Symlink to Containerfile for Docker CLI compatibility
-├── compose.yaml               # Compose orchestration with hardware profiles
-├── containerization-plan.json # Preflight deployment decision manifest
-├── start.sh                   # Hardware auto-detection & lifecycle launcher
-├── .containerignore           # Build context exclusions for Podman
-├── .dockerignore              # Build context exclusions for Docker (symlink)
-├── .env.example               # Template environment configuration
-├── server.ts                  # Express server, LLM proxy, & static SPA runner
-├── src/                       # React 19 application components and graph engines
-├── lib/                       # Utility libraries
-└── components/                # UI primitives
+├── docker/
+│   ├── Containerfile              # Multi-stage production OCI build definition
+│   ├── Dockerfile                 # Symlink to Containerfile for Docker CLI compatibility
+│   ├── compose.yaml               # Compose orchestration with hardware profiles
+│   ├── containerization-plan.json # Preflight deployment decision manifest
+│   ├── start.sh                   # Hardware auto-detection & lifecycle launcher
+│   ├── .containerignore           # Build context exclusions for Podman
+│   └── .dockerignore              # Build context exclusions for Docker (symlink)
+├── .env.example                   # Template environment configuration
+├── server.ts                      # Express server, LLM proxy, & static SPA runner
+├── src/                           # React 19 application components and graph engines
+├── lib/                           # Utility libraries
+└── components/                    # UI primitives
 ```

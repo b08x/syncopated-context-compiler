@@ -8,7 +8,9 @@
 #   Intel iGPU/NPU (/dev/dri): podman compose --profile intel up -d
 #
 # Hardware Auto-detection Launcher:
-#   ./start.sh [--build]
+#   ./docker/start.sh [--build]
+
+name: syncopated-context-compiler
 
 services:
   # ============================================================================
@@ -16,8 +18,13 @@ services:
   # ============================================================================
   syncopated-context-compiler:
     build:
-      context: .
-      dockerfile: Containerfile
+      context: ..
+      dockerfile: docker/Containerfile
+    env_file:
+      - path: ../.env
+        required: false
+      - path: .env
+        required: false
     image: ${IMAGE_NAME:-localhost/syncopated-context-compiler:latest}
     container_name: ${PROJECT_NAME:-syncopated-context-compiler}
     profiles:
