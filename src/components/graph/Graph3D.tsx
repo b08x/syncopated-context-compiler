@@ -22,7 +22,7 @@ export function Graph3D({ graph }: Graph3DProps) {
   const { getProvider, apiKeys, taskConfigs } = useProvider();
   const navigate = useNavigate();
   
-  const summaryConfig = taskConfigs.summary || { providerId: 'google', modelId: 'gemini-3-flash-preview', parameters: { temperature: 0.5, maxTokens: 1000 } };
+  const summaryConfig = taskConfigs.summary || { providerId: 'google', modelId: 'gemini-flash-latest', parameters: { temperature: 0.5, maxTokens: 1000 } };
   const activeProvider = getProvider(summaryConfig.providerId);
 
   const playAudio = async (base64: string) => {

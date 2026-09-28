@@ -1,12 +1,13 @@
 import React from 'react';
 import { useGraph } from '@/src/contexts/GraphContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/src/components/ui/card';
-import { MessageSquare, Network, Zap, CheckCircle2, AlertCircle, Upload } from 'lucide-react';
+import { MessageSquare, Network, Zap, CheckCircle2, AlertCircle, Upload, Database, RefreshCw } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
 import { Button } from '@/src/components/ui/button';
+import { Link } from 'react-router-dom';
 
 export function DashboardView() {
-  const { state } = useGraph();
+  const { state, isHydrated, isPersisting, lastSavedAt, storageStats } = useGraph();
   const stats = state.meta.stats;
 
   const cards = [
@@ -18,9 +19,32 @@ export function DashboardView() {
 
   return (
     <div className="p-8 max-w-6xl mx-auto space-y-8">
-      <div className="space-y-2">
-        <h2 className="text-3xl font-bold tracking-tight text-foreground">Dashboard</h2>
-        <p className="text-muted-foreground">Overview of your ConvoGraph and distillation progress.</p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="space-y-1">
+          <h2 className="text-3xl font-bold tracking-tight text-foreground">Dashboard</h2>
+          <p className="text-muted-foreground">Overview of your ConvoGraph, distillation progress, and local browser persistence.</p>
+        </div>
+
+        {/* Dexie.js Persistence Pill */}
+        <Link 
+          to="/settings" 
+          className="flex items-center gap-2 px-3 py-1.5 rounded-md border border-border/60 bg-card/60 hover:bg-card hover:border-brand-orange/40 transition-all font-mono text-xs text-muted-foreground hover:text-foreground self-start sm:self-auto cursor-pointer"
+          title="Click to view Dexie.js storage settings"
+        >
+          <Database className="w-3.5 h-3.5 text-brand-orange" />
+          <span>Dexie.js IndexedDB:</span>
+          {isPersisting ? (
+            <span className="text-brand-orange flex items-center gap-1 font-semibold">
+              <RefreshCw className="w-3 h-3 animate-spin" /> Syncing...
+            </span>
+          ) : isHydrated ? (
+            <span className="text-emerald-500 font-semibold flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> Persistent
+            </span>
+          ) : (
+            <span className="text-amber-500 font-semibold">Hydrating...</span>
+          )}
+        </Link>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -73,6 +97,9 @@ export function DashboardView() {
             </Button>
             <Button variant="outline" className="w-full justify-start gap-2 border-border/50 hover:bg-brand-orange/10 hover:text-brand-orange hover:border-brand-orange/50 transition-all" asChild>
               <a href="/distill"><Zap className="w-4 h-4" /> Distill Skills</a>
+            </Button>
+            <Button variant="outline" className="w-full justify-start gap-2 border-border/50 hover:bg-emerald-500/10 hover:text-emerald-500 hover:border-emerald-500/50 transition-all" asChild>
+              <Link to="/settings"><Database className="w-4 h-4" /> Manage Dexie.js Storage ({storageStats?.conversations ?? 0} convos)</Link>
             </Button>
           </CardContent>
         </Card>

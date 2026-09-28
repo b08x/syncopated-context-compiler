@@ -22,17 +22,31 @@ async function startServer() {
   app.use(express.json({ limit: '50mb' }));
   app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
-  // Ensure all API errors return JSON
-  app.use((err: any, req: any, res: any, next: any) => {
-    if (req.path.startsWith('/api/')) {
-      console.error('API Error:', err);
-      return res.status(err.status || 500).json({ 
-        error: err.message || 'Internal Server Error',
-        details: err.stack
-      });
+  // Helper to ensure Nginx proxy_intercept_errors (which intercepts 403, 502, 503, 504)
+  // never replaces an API JSON error response with warmup.html or forbidden.html
+  const getSafeApiStatus = (status: any, defaultStatus = 500) => {
+    const num = Number(status);
+    if (!num || [403, 502, 503, 504].includes(num)) {
+      return defaultStatus;
     }
-    next(err);
-  });
+    return num;
+  };
+
+  const extractErrorMessage = (error: any, fallback = "An error occurred"): string => {
+    if (!error) return fallback;
+    if (typeof error === 'string') return error;
+    if (error.message) {
+      try {
+        const parsed = JSON.parse(error.message);
+        if (parsed?.error?.message) return parsed.error.message;
+        if (typeof parsed?.error === 'string') return parsed.error;
+      } catch {
+        // Not a JSON string
+      }
+      return error.message;
+    }
+    return fallback;
+  };
 
   const providers = {
     google: new GeminiAdapter(),
@@ -106,12 +120,12 @@ async function startServer() {
       });
     } catch (error: any) {
       const latencyMs = Date.now() - startTime;
-      console.error(`Connection test failed for ${req.body.providerId}:`, error);
-      res.status(400).json({
+      console.error(`Connection test failed for ${req.body?.providerId}:`, error);
+      res.status(getSafeApiStatus(error.status, 400)).json({
         success: false,
-        providerId: req.body.providerId,
+        providerId: req.body?.providerId,
         latencyMs,
-        error: error.message || "Failed to establish connection"
+        error: extractErrorMessage(error, "Failed to establish connection")
       });
     }
   });
@@ -133,7 +147,9 @@ async function startServer() {
       res.json(models);
     } catch (error: any) {
       console.error(`Error in /api/llm/models/${req.params.providerId}:`, error);
-      res.status(500).json({ error: error.message || "Failed to fetch models" });
+      res.status(getSafeApiStatus(error.status, 500)).json({ 
+        error: extractErrorMessage(error, "Failed to fetch models") 
+      });
     }
   });
 
@@ -147,13 +163,14 @@ async function startServer() {
       const result = await provider.generate(prompt, apiKey, modelId);
       res.json(result);
     } catch (error: any) {
-      console.error(`Error in /api/llm/generate (${req.body.providerId}):`, error);
-      res.status(error.status || 500).json({ error: error.message || "Generation failed" });
+      console.error(`Error in /api/llm/generate (${req.body?.providerId}):`, error);
+      res.status(getSafeApiStatus(error.status, 500)).json({ 
+        error: extractErrorMessage(error, "Generation failed") 
+      });
     }
   });
 
-  // For streaming, we might need a more specialized approach depending on the adapter
-  // But for now, let's implement basic streaming if possible
+  // Streaming endpoint
   app.post("/api/llm/stream", async (req, res) => {
     try {
       const { providerId, modelId, prompt, apiKey: clientApiKey } = req.body;
@@ -172,12 +189,13 @@ async function startServer() {
       res.write('data: [DONE]\n\n');
       res.end();
     } catch (error: any) {
-      console.error(`Stream error for ${req.body.providerId}:`, error);
+      console.error(`Stream error for ${req.body?.providerId}:`, error);
+      const errMsg = extractErrorMessage(error, "Streaming failed");
       if (!res.headersSent) {
-          res.status(error.status || 500).json({ error: error.message || "Streaming failed" });
+        res.status(getSafeApiStatus(error.status, 500)).json({ error: errMsg });
       } else {
-          res.write(`data: ${JSON.stringify({ error: error.message || "Streaming interrupted" })}\n\n`);
-          res.end();
+        res.write(`data: ${JSON.stringify({ error: errMsg })}\n\n`);
+        res.end();
       }
     }
   });
@@ -201,14 +219,32 @@ async function startServer() {
       const base64Audio = await provider.speak(text, apiKey);
       res.json({ audio: base64Audio });
     } catch (error: any) {
-      console.error(`Speak error for ${req.body.providerId}:`, error);
-      res.status(error.status || 500).json({ error: error.message || "Speech generation failed" });
+      console.error(`Speak error for ${req.body?.providerId}:`, error);
+      res.status(getSafeApiStatus(error.status, 500)).json({ 
+        error: extractErrorMessage(error, "Speech generation failed") 
+      });
     }
   });
 
   // Handle common API 404s before Vite
   app.all("/api/*", (req, res) => {
     res.status(404).json({ error: `API route not found: ${req.method} ${req.path}` });
+  });
+
+  app.all("/api", (req, res) => {
+    res.status(404).json({ error: "API route not found" });
+  });
+
+  // Ensure all unhandled API errors return JSON
+  app.use((err: any, req: any, res: any, next: any) => {
+    if (req.path.startsWith('/api')) {
+      console.error('Unhandled API Error:', err);
+      return res.status(getSafeApiStatus(err.status, 500)).json({ 
+        error: extractErrorMessage(err, 'Internal Server Error'),
+        details: process.env.NODE_ENV !== 'production' ? err.stack : undefined
+      });
+    }
+    next(err);
   });
 
   // Vite middleware for development

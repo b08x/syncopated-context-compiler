@@ -328,9 +328,9 @@ export function ImportWizard() {
             </Button>
 
             {status === 'success' && (
-              <div className="flex items-center gap-2 text-green-400 text-sm bg-green-500/10 p-3 rounded-md border border-green-500/20">
-                <CheckCircle2 className="w-4 h-4" />
-                Graph built successfully! Head to Review or Graph Explorer.
+              <div className="flex items-center gap-2 text-emerald-400 text-sm bg-emerald-500/10 p-3 rounded-md border border-emerald-500/20">
+                <CheckCircle2 className="w-4 h-4 shrink-0" />
+                <span>Graph built and securely persisted to Dexie.js (IndexedDB)! Head to Review or Graph Explorer.</span>
               </div>
             )}
 

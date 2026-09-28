@@ -1,9 +1,39 @@
 import { GenerationPrompt, GenerationResult, ModelProvider, ModelInfo } from '../../types/provider';
 
+const FALLBACK_MODELS: Record<string, ModelInfo[]> = {
+  google: [
+    { id: 'gemini-flash-latest', name: 'Gemini Flash Latest', capabilities: { tools: true, reasoning: true, structured: true } },
+    { id: 'gemini-3.8-flash', name: 'Gemini 3.8 Flash', capabilities: { tools: true, reasoning: true, structured: true } },
+    { id: 'gemini-3.1-pro-preview', name: 'Gemini 3.1 Pro (Preview)', capabilities: { tools: true, reasoning: true, structured: true } },
+  ],
+  mistral: [
+    { id: 'mistral-large-latest', name: 'Mistral Large (Latest)', capabilities: { tools: true, reasoning: true, structured: true } },
+    { id: 'mistral-small-latest', name: 'Mistral Small (Latest)', capabilities: { tools: true, reasoning: false, structured: true } },
+    { id: 'open-mistral-nemo', name: 'Mistral Nemo', capabilities: { tools: true, reasoning: false, structured: true } },
+    { id: 'codestral-latest', name: 'Codestral', capabilities: { tools: true, reasoning: true, structured: true } },
+  ],
+  groq: [
+    { id: 'llama-3.3-70b-versatile', name: 'Llama 3.3 70B Versatile', capabilities: { tools: true, reasoning: true, structured: true } },
+    { id: 'llama-3.1-8b-instant', name: 'Llama 3.1 8B Instant', capabilities: { tools: true, reasoning: false, structured: true } },
+    { id: 'gemma2-9b-it', name: 'Gemma 2 9B', capabilities: { tools: true, reasoning: false, structured: true } },
+  ],
+  openrouter: [
+    { id: 'google/gemini-2.0-flash-001', name: 'Gemini 2.0 Flash (OpenRouter)', capabilities: { tools: true, reasoning: true, structured: true } },
+    { id: 'anthropic/claude-3.5-sonnet', name: 'Claude 3.5 Sonnet (OpenRouter)', capabilities: { tools: true, reasoning: true, structured: true } },
+    { id: 'deepseek/deepseek-chat', name: 'DeepSeek V3 (OpenRouter)', capabilities: { tools: true, reasoning: true, structured: true } },
+  ],
+};
+
 export class ProxyAdapter implements ModelProvider {
   constructor(public id: string, public name: string) {}
   
   supportsDirectBrowser = false;
+
+  private getDefaultFallbackModels(): ModelInfo[] {
+    return FALLBACK_MODELS[this.id] || [
+      { id: 'default', name: `${this.name} Default Model`, capabilities: { tools: true, reasoning: true, structured: true } }
+    ];
+  }
 
   async generate(prompt: GenerationPrompt, apiKey: string | undefined, modelId: string): Promise<GenerationResult> {
     const response = await fetch('/api/llm/generate', {
@@ -17,15 +47,22 @@ export class ProxyAdapter implements ModelProvider {
       })
     });
 
+    const contentType = response.headers.get('content-type') || '';
     const text = await response.text();
     let data;
     try {
-      data = JSON.parse(text);
-    } catch (e) {
-      if (!response.ok) {
-        throw new Error(`Server Error (${response.status}): ${text.slice(0, 100)}...`);
+      if (text.trim().startsWith('<') || contentType.includes('text/html')) {
+        throw new Error('Service is warming up or temporarily unavailable. Please try again.');
       }
-      throw new Error(`Invalid JSON response: ${text.slice(0, 100)}...`);
+      data = JSON.parse(text);
+    } catch (e: any) {
+      if (e.message?.includes('temporarily unavailable')) {
+        throw e;
+      }
+      if (!response.ok) {
+        throw new Error(`Server Error (${response.status}): ${text.slice(0, 100)}`);
+      }
+      throw new Error(`Invalid response format from server: ${text.slice(0, 100)}`);
     }
 
     if (!response.ok) {
@@ -50,16 +87,21 @@ export class ProxyAdapter implements ModelProvider {
       })
     });
 
-    if (!response.ok) {
+    const contentType = response.headers.get('content-type') || '';
+    if (!response.ok || contentType.includes('text/html')) {
       const text = await response.text();
       let message = 'Failed to stream';
       try {
-        const errorData = JSON.parse(text);
-        message = typeof errorData.error === 'object' 
-          ? errorData.error.message || JSON.stringify(errorData.error)
-          : errorData.error || 'Failed to stream';
-      } catch (e) {
-        message = `Server Error (${response.status}): ${text.slice(0, 100)}...`;
+        if (text.trim().startsWith('<') || contentType.includes('text/html')) {
+          message = 'Service is warming up or temporarily unavailable. Please try again.';
+        } else {
+          const errorData = JSON.parse(text);
+          message = typeof errorData.error === 'object' 
+            ? errorData.error.message || JSON.stringify(errorData.error)
+            : errorData.error || 'Failed to stream';
+        }
+      } catch {
+        message = `Server Error (${response.status}): ${text.slice(0, 100)}`;
       }
       throw new Error(message);
     }
@@ -95,21 +137,24 @@ export class ProxyAdapter implements ModelProvider {
   }
 
   async fetchModels(_apiKey: string | undefined): Promise<ModelInfo[]> {
-    const response = await fetch(`/api/llm/models/${this.id}`);
-    const text = await response.text();
-    
-    let data;
     try {
-      data = JSON.parse(text);
-    } catch (e) {
-      throw new Error(`Failed to parse models response correctly for ${this.id}: ${text.slice(0, 100)}...`);
-    }
+      const response = await fetch(`/api/llm/models/${this.id}`);
+      const contentType = response.headers.get('content-type') || '';
+      const text = await response.text();
+      
+      if (text.trim().startsWith('<') || contentType.includes('text/html')) {
+        return this.getDefaultFallbackModels();
+      }
 
-    if (!response.ok) {
-      throw new Error(data.error || `Failed to fetch models: ${response.status}`);
+      const data = JSON.parse(text);
+      if (!response.ok || !Array.isArray(data)) {
+        return this.getDefaultFallbackModels();
+      }
+      
+      return data;
+    } catch {
+      return this.getDefaultFallbackModels();
     }
-    
-    return data;
   }
 
   async speak(text: string, apiKey: string | undefined): Promise<string> {
@@ -123,12 +168,17 @@ export class ProxyAdapter implements ModelProvider {
       })
     });
 
+    const contentType = response.headers.get('content-type') || '';
     const bodyText = await response.text();
     let data;
     try {
+      if (bodyText.trim().startsWith('<') || contentType.includes('text/html')) {
+        throw new Error('Speech service is temporarily unavailable. Please try again.');
+      }
       data = JSON.parse(bodyText);
-    } catch (e) {
-      throw new Error(`Invalid response from speak API: ${bodyText.slice(0, 100)}...`);
+    } catch (e: any) {
+      if (e.message?.includes('temporarily unavailable')) throw e;
+      throw new Error(`Invalid response from speak API: ${bodyText.slice(0, 100)}`);
     }
 
     if (!response.ok) {

@@ -21,8 +21,10 @@ import {
   ChevronDown,
   ChevronRight,
   Layers,
-  Sliders
+  Sliders,
+  Database
 } from 'lucide-react';
+import { StorageSettings } from './StorageSettings';
 import { TaskType } from '@/src/types/provider';
 import { cn } from '@/src/lib/utils';
 
@@ -97,7 +99,7 @@ export function SettingsView() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-2 bg-muted/40 border border-border/60 p-1">
+        <TabsList className="grid w-full grid-cols-3 bg-muted/40 border border-border/60 p-1">
           <TabsTrigger 
             value="providers" 
             className="gap-2 data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:border-b-2 data-[state=active]:border-brand-orange transition-all font-mono text-xs uppercase tracking-wider"
@@ -109,6 +111,12 @@ export function SettingsView() {
             className="gap-2 data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:border-b-2 data-[state=active]:border-brand-orange transition-all font-mono text-xs uppercase tracking-wider"
           >
             <Settings2 className="w-4 h-4 text-brand-orange" /> Task Model Routing
+          </TabsTrigger>
+          <TabsTrigger 
+            value="storage" 
+            className="gap-2 data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:border-b-2 data-[state=active]:border-brand-orange transition-all font-mono text-xs uppercase tracking-wider"
+          >
+            <Database className="w-4 h-4 text-blue-400" /> Dexie.js Storage
           </TabsTrigger>
         </TabsList>
 
@@ -526,6 +534,11 @@ export function SettingsView() {
               })}
             </CardContent>
           </Card>
+        </TabsContent>
+
+        {/* DEXIE.JS STORAGE TAB */}
+        <TabsContent value="storage" className="space-y-6">
+          <StorageSettings />
         </TabsContent>
       </Tabs>
     </div>

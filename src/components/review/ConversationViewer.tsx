@@ -30,7 +30,7 @@ export function ConversationViewer({ conversationId }: ConversationViewerProps) 
   const verbs = ['Synthesizing', 'Distilling', 'Analyzing', 'Retrieving', 'Contextualizing', 'Extracting'];
 
   const getTaskConfig = (task: TaskType) => {
-    return taskConfigs[task] || { providerId: 'google', modelId: 'gemini-3-flash-preview', parameters: { temperature: 0.1, maxTokens: 1000 } };
+    return taskConfigs[task] || { providerId: 'google', modelId: 'gemini-flash-latest', parameters: { temperature: 0.1, maxTokens: 1000 } };
   };
 
   React.useEffect(() => {

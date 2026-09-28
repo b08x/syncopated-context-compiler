@@ -55,10 +55,9 @@ export class MistralAdapter implements ModelProvider {
         }
       }));
     } catch (e: any) {
-      if (e.message?.includes('401')) {
+      if (e.message?.includes('401') || e.message?.includes('403')) {
         throw e;
       }
-      console.warn('Mistral model fetch failed. Using fallback list.');
       return [
         { id: 'mistral-large-latest', name: 'Mistral Large (Latest)', capabilities: { tools: true, reasoning: true, structured: true } },
         { id: 'mistral-small-latest', name: 'Mistral Small (Latest)', capabilities: { tools: true, reasoning: false, structured: true } },

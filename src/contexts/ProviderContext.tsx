@@ -23,16 +23,16 @@ interface ProviderState {
 }
 
 const DEFAULT_CONFIGS: Record<TaskType, TaskModelConfig> = {
-  import: { providerId: 'google', modelId: 'gemini-3-flash-preview', parameters: { temperature: 0.1, maxTokens: 1000 } },
-  review: { providerId: 'google', modelId: 'gemini-3-flash-preview', parameters: { temperature: 0.1, maxTokens: 1000 } },
+  import: { providerId: 'google', modelId: 'gemini-flash-latest', parameters: { temperature: 0.1, maxTokens: 1000 } },
+  review: { providerId: 'google', modelId: 'gemini-flash-latest', parameters: { temperature: 0.1, maxTokens: 1000 } },
   trajectory: { providerId: 'google', modelId: 'gemini-3.1-pro-preview', parameters: { temperature: 0.3, maxTokens: 2000 } },
-  distillation_weak: { providerId: 'google', modelId: 'gemini-3-flash-preview', parameters: { temperature: 0.5, maxTokens: 4000 } },
+  distillation_weak: { providerId: 'google', modelId: 'gemini-flash-latest', parameters: { temperature: 0.5, maxTokens: 4000 } },
   distillation_strong: { providerId: 'google', modelId: 'gemini-3.1-pro-preview', parameters: { temperature: 0.5, maxTokens: 4000 } },
-  retrieval: { providerId: 'google', modelId: 'gemini-3-flash-preview', parameters: { temperature: 0, maxTokens: 500 } },
-  insights: { providerId: 'google', modelId: 'gemini-3-flash-preview', parameters: { temperature: 0.7, maxTokens: 2000 } },
-  summary: { providerId: 'google', modelId: 'gemini-3-flash-preview', parameters: { temperature: 0.5, maxTokens: 1000 } },
-  refactor: { providerId: 'google', modelId: 'gemini-3-flash-preview', parameters: { temperature: 0.1, maxTokens: 1000 } },
-  search: { providerId: 'google', modelId: 'gemini-3-flash-preview', parameters: { temperature: 0.3, maxTokens: 500 } },
+  retrieval: { providerId: 'google', modelId: 'gemini-flash-latest', parameters: { temperature: 0, maxTokens: 500 } },
+  insights: { providerId: 'google', modelId: 'gemini-flash-latest', parameters: { temperature: 0.7, maxTokens: 2000 } },
+  summary: { providerId: 'google', modelId: 'gemini-flash-latest', parameters: { temperature: 0.5, maxTokens: 1000 } },
+  refactor: { providerId: 'google', modelId: 'gemini-flash-latest', parameters: { temperature: 0.1, maxTokens: 1000 } },
+  search: { providerId: 'google', modelId: 'gemini-flash-latest', parameters: { temperature: 0.3, maxTokens: 500 } },
 };
 
 const ProviderContext = createContext<{
@@ -74,11 +74,28 @@ export function ProviderProvider({ children }: { children: ReactNode }) {
     const savedDisabledModels = sessionStorage.getItem('convo_workbench_disabled_models');
     const savedKeys = sessionStorage.getItem('convo_workbench_api_keys');
     const savedConfigs = sessionStorage.getItem('convo_workbench_task_configs');
+
+    let parsedConfigs: Record<TaskType, TaskModelConfig> = { ...DEFAULT_CONFIGS };
+    if (savedConfigs) {
+      try {
+        const loaded = JSON.parse(savedConfigs);
+        // Migrate any deprecated or overloaded model IDs
+        Object.keys(loaded).forEach(taskKey => {
+          if (loaded[taskKey]?.modelId === 'gemini-3-flash-preview') {
+            loaded[taskKey].modelId = 'gemini-flash-latest';
+          }
+        });
+        parsedConfigs = { ...DEFAULT_CONFIGS, ...loaded };
+      } catch {
+        parsedConfigs = DEFAULT_CONFIGS;
+      }
+    }
+
     return {
-      enabledProviders: savedEnabled ? JSON.parse(savedEnabled) : {}, // Disabled by default
+      enabledProviders: savedEnabled ? JSON.parse(savedEnabled) : { google: true },
       disabledModels: savedDisabledModels ? JSON.parse(savedDisabledModels) : {},
       apiKeys: savedKeys ? JSON.parse(savedKeys) : {},
-      taskConfigs: savedConfigs ? { ...DEFAULT_CONFIGS, ...JSON.parse(savedConfigs) } : DEFAULT_CONFIGS,
+      taskConfigs: parsedConfigs,
       availableModels: {},
       serverKeyStatus: {},
       connectionStatus: {},
