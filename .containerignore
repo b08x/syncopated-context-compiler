@@ -1,0 +1,33 @@
+# Version control & project metadata
+.git
+.gitignore
+.trackboi
+.crush
+
+# Dependencies & build outputs (rebuilt inside container)
+node_modules
+dist
+dist-server
+
+# Local environment & secrets
+.env
+.env.*
+!.env.example
+
+# Scratch & development scripts
+distill_subtasks.ts
+*.log
+
+# Container files
+**/Containerfile*
+**/Dockerfile*
+docker-compose*.yml
+compose*.yaml
+
+# IDE & OS files
+.vscode
+.idea
+*.swp
+*.swo
+.DS_Store
+Thumbs.db

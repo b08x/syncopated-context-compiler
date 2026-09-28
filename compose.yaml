@@ -1,0 +1,123 @@
+# compose.yaml
+# Syncopated Context Compiler
+# Orchestration for Podman with docker-compose CLI plugin & Docker Compose
+#
+# Supported Profiles:
+#   CPU (default fallback):    podman compose --profile cpu up -d
+#   NVIDIA GPU (CUDA / CDI):   podman compose --profile nvidia up -d
+#   Intel iGPU/NPU (/dev/dri): podman compose --profile intel up -d
+#
+# Hardware Auto-detection Launcher:
+#   ./start.sh [--build]
+
+services:
+  # ============================================================================
+  # Visual Driver & Context Compiler (Node 22 / Express / React 19 Vite SPA)
+  # ============================================================================
+  syncopated-context-compiler:
+    build:
+      context: .
+      dockerfile: Containerfile
+    image: ${IMAGE_NAME:-localhost/syncopated-context-compiler:latest}
+    container_name: ${PROJECT_NAME:-syncopated-context-compiler}
+    profiles:
+      - cpu
+      - nvidia
+      - intel
+    ports:
+      - "${APP_PORT:-3000}:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - HOST=0.0.0.0
+      - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-http://host.containers.internal:11434}
+      - VITE_SFL_API=${VITE_SFL_API:-http://host.containers.internal:3001}
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY:-}
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
+      - MISTRAL_API_KEY=${MISTRAL_API_KEY:-}
+      - GROQ_API_KEY=${GROQ_API_KEY:-}
+    extra_hosts:
+      # Allows rootless container to reach host services (Ollama, sfl-engine)
+      - "host.containers.internal:host-gateway"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3000/api/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+    restart: unless-stopped
+    networks:
+      - scc-network
+
+  # ============================================================================
+  # Optional Containerized Ollama Services (Local AI Inference)
+  # Activated with dedicated profile when not using host Ollama instance
+  # ============================================================================
+
+  # --- NVIDIA GPU Accelerated Ollama ---
+  ollama-nvidia:
+    image: docker.io/ollama/ollama:latest
+    container_name: ${PROJECT_NAME:-syncopated-context-compiler}-ollama-nvidia
+    profiles:
+      - nvidia-ollama
+    ports:
+      - "${CONTAINER_OLLAMA_PORT:-11435}:11434"
+    volumes:
+      - ollama-models:/root/.ollama
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - OLLAMA_KEEP_ALIVE=24h
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    networks:
+      - scc-network
+
+  # --- Intel iGPU / OpenCL Accelerated Ollama ---
+  ollama-intel:
+    image: docker.io/ollama/ollama:latest
+    container_name: ${PROJECT_NAME:-syncopated-context-compiler}-ollama-intel
+    profiles:
+      - intel-ollama
+    ports:
+      - "${CONTAINER_OLLAMA_PORT:-11435}:11434"
+    volumes:
+      - ollama-models:/root/.ollama
+    devices:
+      - /dev/dri:/dev/dri
+    group_add:
+      - video
+      - render
+    environment:
+      - OLLAMA_KEEP_ALIVE=24h
+    networks:
+      - scc-network
+
+  # --- CPU Ollama ---
+  ollama-cpu:
+    image: docker.io/ollama/ollama:latest
+    container_name: ${PROJECT_NAME:-syncopated-context-compiler}-ollama-cpu
+    profiles:
+      - cpu-ollama
+    ports:
+      - "${CONTAINER_OLLAMA_PORT:-11435}:11434"
+    volumes:
+      - ollama-models:/root/.ollama
+    environment:
+      - OLLAMA_KEEP_ALIVE=24h
+    networks:
+      - scc-network
+
+volumes:
+  ollama-models:
+    name: ${PROJECT_NAME:-syncopated-context-compiler}-ollama-models
+
+networks:
+  scc-network:
+    name: ${PROJECT_NAME:-syncopated-context-compiler}-net
+    driver: bridge
