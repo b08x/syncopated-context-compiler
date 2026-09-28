@@ -230,6 +230,221 @@ async function startServer() {
     }
   });
 
+  // External Memory Service Integration (e.g. Vectorize Hindsight, custom REST)
+  app.post("/api/memory/test", async (req, res) => {
+    try {
+      const { endpointUrl, apiKey, bankId } = req.body;
+      if (!endpointUrl) {
+        return res.status(400).json({ error: "Missing endpointUrl" });
+      }
+
+      const headers: Record<string, string> = {
+        'Accept': 'application/json',
+        'User-Agent': 'ConvoWorkbench/1.0'
+      };
+      if (apiKey) {
+        headers['Authorization'] = `Bearer ${apiKey}`;
+        headers['x-api-key'] = apiKey;
+      }
+      if (bankId) {
+        headers['x-bank-id'] = bankId;
+      }
+
+      // Try health endpoint first, then direct URL
+      const cleanUrl = endpointUrl.trim();
+      let targetUrl = cleanUrl;
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 6000);
+
+      let response;
+      try {
+        response = await fetch(targetUrl, {
+          method: 'GET',
+          headers,
+          signal: controller.signal
+        });
+      } catch (err: any) {
+        // If GET on base path failed with 404/ECONN, try appending /health
+        if (!cleanUrl.endsWith('/health')) {
+          const healthUrl = cleanUrl.endsWith('/') ? `${cleanUrl}health` : `${cleanUrl}/health`;
+          try {
+            response = await fetch(healthUrl, {
+              method: 'GET',
+              headers,
+              signal: controller.signal
+            });
+            targetUrl = healthUrl;
+          } catch {
+            throw err;
+          }
+        } else {
+          throw err;
+        }
+      } finally {
+        clearTimeout(timeoutId);
+      }
+
+      const isReachable = response.ok || response.status === 404 || response.status === 405 || response.status === 401;
+      let bodyData = null;
+      try {
+        bodyData = await response.json();
+      } catch {
+        // Not JSON
+      }
+
+      if (response.ok) {
+        res.json({
+          success: true,
+          message: `Endpoint active & healthy (HTTP ${response.status})`,
+          statusCode: response.status,
+          details: bodyData
+        });
+      } else if (response.status === 401 || response.status === 403) {
+        res.json({
+          success: false,
+          error: `Authentication failed (HTTP ${response.status}). Please check your API key / Auth token.`,
+          statusCode: response.status
+        });
+      } else if (isReachable) {
+        res.json({
+          success: true,
+          message: `Service reachable at ${targetUrl} (HTTP ${response.status})`,
+          statusCode: response.status
+        });
+      } else {
+        res.status(getSafeApiStatus(response.status, 502)).json({
+          success: false,
+          error: `External service returned HTTP ${response.status}`
+        });
+      }
+    } catch (err: any) {
+      console.warn("Memory test connection error:", err.message);
+      res.status(502).json({
+        success: false,
+        error: `Could not connect to external service: ${err.message || 'Connection refused or timed out'}`
+      });
+    }
+  });
+
+  app.post("/api/memory/push", async (req, res) => {
+    try {
+      const { endpointUrl, apiKey, bankId, memories, serviceType } = req.body;
+      if (!endpointUrl) {
+        return res.status(400).json({ error: "Missing endpointUrl" });
+      }
+
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'User-Agent': 'ConvoWorkbench/1.0'
+      };
+      if (apiKey) {
+        headers['Authorization'] = `Bearer ${apiKey}`;
+        headers['x-api-key'] = apiKey;
+      }
+      if (bankId) {
+        headers['x-bank-id'] = bankId;
+      }
+
+      const cleanUrl = endpointUrl.trim();
+      const payload = {
+        bank_id: bankId || 'default',
+        service_type: serviceType || 'hindsight',
+        memories: memories || []
+      };
+
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 12000);
+
+      const response = await fetch(cleanUrl, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(payload),
+        signal: controller.signal
+      });
+      clearTimeout(timeoutId);
+
+      let responseData: any = {};
+      try {
+        responseData = await response.json();
+      } catch {
+        responseData = { text: await response.text() };
+      }
+
+      if (response.ok) {
+        res.json({
+          success: true,
+          syncedCount: memories?.length || 0,
+          message: responseData.message || `Synced ${memories?.length || 0} memories successfully`,
+          details: responseData
+        });
+      } else {
+        res.status(getSafeApiStatus(response.status, 502)).json({
+          success: false,
+          error: responseData.error || responseData.message || `External endpoint returned HTTP ${response.status}`,
+          details: responseData
+        });
+      }
+    } catch (err: any) {
+      console.warn("Memory push error:", err.message);
+      res.status(502).json({
+        success: false,
+        error: `Sync push failed: ${err.message}`
+      });
+    }
+  });
+
+  app.post("/api/memory/pull", async (req, res) => {
+    try {
+      const { endpointUrl, apiKey, bankId } = req.body;
+      if (!endpointUrl) {
+        return res.status(400).json({ error: "Missing endpointUrl" });
+      }
+
+      const headers: Record<string, string> = {
+        'Accept': 'application/json',
+        'User-Agent': 'ConvoWorkbench/1.0'
+      };
+      if (apiKey) {
+        headers['Authorization'] = `Bearer ${apiKey}`;
+        headers['x-api-key'] = apiKey;
+      }
+      if (bankId) {
+        headers['x-bank-id'] = bankId;
+      }
+
+      const cleanUrl = endpointUrl.trim();
+      const queryUrl = bankId ? `${cleanUrl}${cleanUrl.includes('?') ? '&' : '?'}bank_id=${encodeURIComponent(bankId)}` : cleanUrl;
+
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 12000);
+
+      const response = await fetch(queryUrl, {
+        method: 'GET',
+        headers,
+        signal: controller.signal
+      });
+      clearTimeout(timeoutId);
+
+      const responseData = await response.json();
+      const memoriesList = Array.isArray(responseData) 
+        ? responseData 
+        : (responseData.memories || responseData.items || responseData.data || []);
+
+      res.json({
+        success: true,
+        memories: memoriesList,
+        count: memoriesList.length
+      });
+    } catch (err: any) {
+      console.warn("Memory pull error:", err.message);
+      res.status(502).json({
+        success: false,
+        error: `Sync pull failed: ${err.message}`
+      });
+    }
+  });
+
   // Handle common API 404s before Vite
   app.all("/api/*", (req, res) => {
     res.status(404).json({ error: `API route not found: ${req.method} ${req.path}` });

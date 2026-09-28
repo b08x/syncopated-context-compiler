@@ -22,10 +22,12 @@ import {
   ChevronRight,
   Layers,
   Sliders,
-  Database
+  Database,
+  Brain
 } from 'lucide-react';
 import { StorageSettings } from './StorageSettings';
 import { ModelCatalogList } from './ModelCatalogList';
+import { MemorySettings } from './MemorySettings';
 import { TaskType } from '@/src/types/provider';
 import { cn } from '@/src/lib/utils';
 
@@ -100,7 +102,7 @@ export function SettingsView() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-3 bg-muted/40 border border-border/60 p-1">
+        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 bg-muted/40 border border-border/60 p-1">
           <TabsTrigger 
             value="providers" 
             className="gap-2 data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:border-b-2 data-[state=active]:border-brand-orange transition-all font-mono text-xs uppercase tracking-wider"
@@ -118,6 +120,12 @@ export function SettingsView() {
             className="gap-2 data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:border-b-2 data-[state=active]:border-brand-orange transition-all font-mono text-xs uppercase tracking-wider"
           >
             <Database className="w-4 h-4 text-blue-400" /> Dexie.js Storage
+          </TabsTrigger>
+          <TabsTrigger 
+            value="memory" 
+            className="gap-2 data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:border-b-2 data-[state=active]:border-brand-orange transition-all font-mono text-xs uppercase tracking-wider"
+          >
+            <Brain className="w-4 h-4 text-purple-400" /> Memories & Sync
           </TabsTrigger>
         </TabsList>
 
@@ -519,6 +527,11 @@ export function SettingsView() {
         {/* DEXIE.JS STORAGE TAB */}
         <TabsContent value="storage" className="space-y-6">
           <StorageSettings />
+        </TabsContent>
+
+        {/* MEMORY & EXTERNAL STORAGE TAB */}
+        <TabsContent value="memory" className="space-y-6">
+          <MemorySettings />
         </TabsContent>
       </Tabs>
     </div>

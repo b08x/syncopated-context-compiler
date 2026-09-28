@@ -11,6 +11,7 @@ import { TrajectoryCompiler } from './components/trajectory/TrajectoryCompiler';
 import { SkillDistiller } from './components/distillation/SkillDistiller';
 import { ExportPanel } from './components/export/ExportPanel';
 import { SettingsView } from './components/settings/SettingsView';
+import { MemoryManager } from './components/memory/MemoryManager';
 
 export default function App() {
   return (
@@ -23,6 +24,11 @@ export default function App() {
               <Route path="/import" element={<ImportWizard />} />
               <Route path="/review" element={<ReviewView />} />
               <Route path="/graph" element={<GraphExplorer />} />
+              <Route path="/memories" element={
+                <div className="p-6 md:p-8 max-w-5xl mx-auto">
+                  <MemoryManager showHeader={true} />
+                </div>
+              } />
               <Route path="/distill" element={
                 <div className="h-full overflow-auto">
                   <TrajectoryCompiler />

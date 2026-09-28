@@ -1,7 +1,7 @@
 import React from 'react';
 import { useGraph } from '@/src/contexts/GraphContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/src/components/ui/card';
-import { MessageSquare, Network, Zap, CheckCircle2, AlertCircle, Upload, Database, RefreshCw } from 'lucide-react';
+import { MessageSquare, Network, Zap, CheckCircle2, AlertCircle, Upload, Database, RefreshCw, Brain } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
 import { Button } from '@/src/components/ui/button';
 import { Link } from 'react-router-dom';
@@ -9,12 +9,14 @@ import { Link } from 'react-router-dom';
 export function DashboardView() {
   const { state, isHydrated, isPersisting, lastSavedAt, storageStats } = useGraph();
   const stats = state.meta.stats;
+  const memoryCount = Object.keys(state.memories || {}).length;
 
   const cards = [
     { title: 'Conversations', value: stats.conversation_count, icon: MessageSquare, color: 'text-brand-orange' },
     { title: 'Messages', value: stats.message_count, icon: Network, color: 'text-brand-blue' },
     { title: 'Rated', value: stats.rated_count, icon: CheckCircle2, color: 'text-green-400' },
     { title: 'Skills Distilled', value: Object.keys(state.skills).length, icon: Zap, color: 'text-brand-orange' },
+    { title: 'Memories', value: memoryCount, icon: Brain, color: 'text-purple-400' },
   ];
 
   return (
@@ -47,7 +49,7 @@ export function DashboardView() {
         </Link>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
         {cards.map((card) => (
           <Card key={card.title} className="border-border/50 bg-card/50 backdrop-blur-sm">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -97,6 +99,9 @@ export function DashboardView() {
             </Button>
             <Button variant="outline" className="w-full justify-start gap-2 border-border/50 hover:bg-brand-orange/10 hover:text-brand-orange hover:border-brand-orange/50 transition-all" asChild>
               <a href="/distill"><Zap className="w-4 h-4" /> Distill Skills</a>
+            </Button>
+            <Button variant="outline" className="w-full justify-start gap-2 border-border/50 hover:bg-purple-500/10 hover:text-purple-400 hover:border-purple-500/50 transition-all" asChild>
+              <Link to="/memories"><Brain className="w-4 h-4 text-purple-400" /> Manage Memories ({memoryCount} stored)</Link>
             </Button>
             <Button variant="outline" className="w-full justify-start gap-2 border-border/50 hover:bg-emerald-500/10 hover:text-emerald-500 hover:border-emerald-500/50 transition-all" asChild>
               <Link to="/settings"><Database className="w-4 h-4" /> Manage Dexie.js Storage ({storageStats?.conversations ?? 0} convos)</Link>

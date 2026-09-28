@@ -59,11 +59,17 @@ export interface SkillNode {
   gitagent_path: string;
 }
 
+export type MemorySource = 'claude_memories' | 'user' | 'custom' | 'hindsight' | 'external';
+
 export interface MemoryNode {
   id: string;
-  source: 'claude_memories';
+  source: MemorySource | string;
   content: string;
   timestamp: number | null;
+  title?: string;
+  tags?: string[];
+  metadata?: Record<string, any>;
+  external_id?: string;
 }
 
 export interface ArtifactNode {
@@ -96,6 +102,7 @@ export interface GraphMeta {
     project_doc_count: number;
     topic_count: number;
     skill_count: number;
+    memory_count?: number;
   };
 }
 

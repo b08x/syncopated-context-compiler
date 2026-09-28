@@ -99,7 +99,8 @@ export function createEmptyGraph(): ConvoGraph {
         artifact_count: 0,
         project_doc_count: 0,
         topic_count: 0,
-        skill_count: 0
+        skill_count: 0,
+        memory_count: 0
       },
     },
   };
@@ -447,4 +448,5 @@ function updateStats(graph: ConvoGraph) {
   graph.meta.stats.project_doc_count = Object.keys(graph.project_docs).length;
   graph.meta.stats.topic_count = Object.keys(graph.topics).length;
   graph.meta.stats.skill_count = Object.keys(graph.skills).length;
+  graph.meta.stats.memory_count = Object.keys(graph.memories).length;
 }
