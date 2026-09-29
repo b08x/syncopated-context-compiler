@@ -1,0 +1,64 @@
+{
+  "project_name": "syncopated-context-compiler",
+  "created_at": "2026-09-28T07:37:00Z",
+  "environment": {
+    "target": "local-dev",
+    "os": "linux-rhel",
+    "docker_installed": true,
+    "container_engine": "podman",
+    "compose_provider": "docker-compose-plugin",
+    "env_style": "dev-defaults"
+  },
+  "hardware": {
+    "nvidia": {
+      "available": true,
+      "toolkit_installed": true,
+      "driver_version": "595.91.07",
+      "cuda_version": "13.2"
+    },
+    "intel": {
+      "available": true,
+      "igpu": true,
+      "npu": false,
+      "dev_dri_confirmed": true
+    },
+    "target_profiles": ["cpu", "nvidia", "intel"]
+  },
+  "services": {
+    "frontend": {
+      "include": false,
+      "reason": "Integrated into unified Node/Express application serving built Vite SPA"
+    },
+    "backend": {
+      "include": true,
+      "framework": "express",
+      "language": "typescript",
+      "location": ".",
+      "port": 3000,
+      "entry_cmd": "npm start",
+      "databases": []
+    },
+    "ai_worker": {
+      "include": false,
+      "reason": "External/host Ollama and cloud LLM APIs (Gemini, OpenRouter, Mistral, Groq) accessed over HTTP"
+    }
+  },
+  "databases": {},
+  "ports": {
+    "backend": 3000
+  },
+  "refactoring": {
+    "needed": false,
+    "current_structure": "flat",
+    "target_structure": "flat",
+    "approved": false,
+    "reason": "Full-stack application where Express server.ts routes /api/llm/* and serves built Vite SPA"
+  },
+  "notes": [
+    "Configured for Podman 5.8+ with Docker Compose CLI plugin (/usr/libexec/docker/cli-plugins/docker-compose)",
+    "Rootless podman networking with netavark/pasta",
+    "Host gateway access via host.containers.internal for local Ollama on port 11434 and sfl-engine on port 3001",
+    "Multi-stage Containerfile with docker.io/library/node:22-alpine base, non-root user (node, uid 1000)",
+    "Profiles cpu, nvidia, intel supported"
+  ]
+}
