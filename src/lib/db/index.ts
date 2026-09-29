@@ -195,7 +195,8 @@ export async function loadFullGraph(): Promise<ConvoGraph | null> {
       artifact_count: artifacts.length,
       project_doc_count: projectDocs.length,
       topic_count: topics.length,
-      skill_count: skills.length
+      skill_count: skills.length,
+      memory_count: memories.length
     };
 
     return graph;
@@ -279,6 +280,73 @@ export async function addProjectDocsToDb(docs: ProjectDocNode[]): Promise<void> 
     if (metaRecord) {
       const currentMeta: GraphMeta = metaRecord.value;
       currentMeta.stats.project_doc_count = docCount;
+      await db.metadata.put({
+        key: 'graph_meta',
+        value: currentMeta,
+        updatedAt: Date.now()
+      });
+    }
+  });
+}
+
+/**
+ * Bulk adds or updates memories in Dexie and updates metadata
+ */
+export async function addMemoriesToDb(memories: MemoryNode[]): Promise<void> {
+  if (memories.length === 0) return;
+  await db.transaction('rw', [db.memories, db.metadata], async () => {
+    await db.memories.bulkPut(memories);
+    const count = await db.memories.count();
+    const metaRecord = await db.metadata.get('graph_meta');
+    if (metaRecord) {
+      const currentMeta: GraphMeta = metaRecord.value;
+      currentMeta.stats.memory_count = count;
+      await db.metadata.put({
+        key: 'graph_meta',
+        value: currentMeta,
+        updatedAt: Date.now()
+      });
+    }
+  });
+}
+
+/**
+ * Updates a single memory in Dexie
+ */
+export async function updateMemoryInDb(memory: MemoryNode): Promise<void> {
+  await db.memories.put(memory);
+}
+
+/**
+ * Deletes a single memory from Dexie
+ */
+export async function deleteMemoryFromDb(id: string): Promise<void> {
+  await db.transaction('rw', [db.memories, db.metadata], async () => {
+    await db.memories.delete(id);
+    const count = await db.memories.count();
+    const metaRecord = await db.metadata.get('graph_meta');
+    if (metaRecord) {
+      const currentMeta: GraphMeta = metaRecord.value;
+      currentMeta.stats.memory_count = count;
+      await db.metadata.put({
+        key: 'graph_meta',
+        value: currentMeta,
+        updatedAt: Date.now()
+      });
+    }
+  });
+}
+
+/**
+ * Clears all memories from Dexie
+ */
+export async function clearMemoriesInDb(): Promise<void> {
+  await db.transaction('rw', [db.memories, db.metadata], async () => {
+    await db.memories.clear();
+    const metaRecord = await db.metadata.get('graph_meta');
+    if (metaRecord) {
+      const currentMeta: GraphMeta = metaRecord.value;
+      currentMeta.stats.memory_count = 0;
       await db.metadata.put({
         key: 'graph_meta',
         value: currentMeta,

@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useReducer, ReactNode, useEffect, useState, useCallback } from 'react';
-import { ConvoGraph, ConversationRating, ProjectDocNode } from '../types/graph';
+import { ConvoGraph, ConversationRating, ProjectDocNode, MemoryNode } from '../types/graph';
 import { createEmptyGraph } from '../lib/graph/builder';
 import { 
   loadFullGraph, 
@@ -8,6 +8,10 @@ import {
   addTrajectoriesToDb, 
   addSkillsToDb, 
   addProjectDocsToDb, 
+  addMemoriesToDb,
+  updateMemoryInDb,
+  deleteMemoryFromDb,
+  clearMemoriesInDb,
   clearAllDatabase,
   getStorageStats,
   StorageStats
@@ -19,6 +23,10 @@ type Action =
   | { type: 'ADD_TRAJECTORIES'; payload: any[] }
   | { type: 'ADD_SKILLS'; payload: any[] }
   | { type: 'ADD_PROJECT_DOCS'; payload: ProjectDocNode[] }
+  | { type: 'ADD_MEMORIES'; payload: MemoryNode[] }
+  | { type: 'UPDATE_MEMORY'; payload: MemoryNode }
+  | { type: 'DELETE_MEMORY'; payload: string }
+  | { type: 'CLEAR_MEMORIES' }
   | { type: 'RESET_GRAPH' };
 
 interface GraphContextValue {
@@ -76,6 +84,54 @@ function graphReducer(state: ConvoGraph, action: Action): ConvoGraph {
       const newDocs = { ...state.project_docs };
       action.payload.forEach(d => newDocs[d.id] = d);
       return { ...state, project_docs: newDocs };
+    case 'ADD_MEMORIES':
+      const newMemories = { ...state.memories };
+      action.payload.forEach(m => newMemories[m.id] = m);
+      return { 
+        ...state, 
+        memories: newMemories,
+        meta: {
+          ...state.meta,
+          stats: {
+            ...state.meta.stats,
+            memory_count: Object.keys(newMemories).length
+          }
+        }
+      };
+    case 'UPDATE_MEMORY':
+      return {
+        ...state,
+        memories: {
+          ...state.memories,
+          [action.payload.id]: action.payload
+        }
+      };
+    case 'DELETE_MEMORY':
+      const remainingMemories = { ...state.memories };
+      delete remainingMemories[action.payload];
+      return {
+        ...state,
+        memories: remainingMemories,
+        meta: {
+          ...state.meta,
+          stats: {
+            ...state.meta.stats,
+            memory_count: Object.keys(remainingMemories).length
+          }
+        }
+      };
+    case 'CLEAR_MEMORIES':
+      return {
+        ...state,
+        memories: {},
+        meta: {
+          ...state.meta,
+          stats: {
+            ...state.meta.stats,
+            memory_count: 0
+          }
+        }
+      };
     case 'RESET_GRAPH':
       return createEmptyGraph();
     default:
@@ -152,6 +208,18 @@ export function GraphProvider({ children }: { children: ReactNode }) {
           setLastSavedAt(Date.now());
         } else if (action.type === 'ADD_PROJECT_DOCS') {
           await addProjectDocsToDb(action.payload);
+          setLastSavedAt(Date.now());
+        } else if (action.type === 'ADD_MEMORIES') {
+          await addMemoriesToDb(action.payload);
+          setLastSavedAt(Date.now());
+        } else if (action.type === 'UPDATE_MEMORY') {
+          await updateMemoryInDb(action.payload);
+          setLastSavedAt(Date.now());
+        } else if (action.type === 'DELETE_MEMORY') {
+          await deleteMemoryFromDb(action.payload);
+          setLastSavedAt(Date.now());
+        } else if (action.type === 'CLEAR_MEMORIES') {
+          await clearMemoriesInDb();
           setLastSavedAt(Date.now());
         } else if (action.type === 'RESET_GRAPH') {
           await clearAllDatabase();

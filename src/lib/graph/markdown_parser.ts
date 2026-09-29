@@ -190,6 +190,7 @@ export function parseMarkdownExport(markdownText: string, filename?: string): Co
     project_doc_count: 0,
     topic_count: 0,
     skill_count: 0,
+    memory_count: 0,
   };
 
   return graph;
